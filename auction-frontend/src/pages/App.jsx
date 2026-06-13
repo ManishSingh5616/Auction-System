@@ -1,34 +1,30 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
 
-// Auth
+// Auth pages
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
-// Auctions
+// Auction pages
 import AuctionsPage from "./pages/AuctionsPage";
 import AuctionDetailPage from "./pages/AuctionDetailPage";
 import CreateAuctionPage from "./pages/CreateAuctionPage";
 import EditAuctionPage from "./pages/EditAuctionPage";
 
-// Bidder
+// Role dashboards
 import BidderDashboard from "./pages/bidder/BidderDashboard";
-import BidderProfile from "./pages/bidder/BidderProfile";
-
-// Consignor
 import ConsignorDashboard from "./pages/consignor/ConsignorDashboard";
-import ConsignorProfile from "./pages/consignor/ConsignorProfile";
 
-// ── Guards ────────────────────────────────────────────────────────────────────
+// ── Route guards ─────────────────────────────────────────────────────────────
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useContext(AuthContext);
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return user.role === "consignor"
-      ? <Navigate to="/consignor/dashboard" replace />
-      : <Navigate to="/bidder/dashboard" replace />;
+    // Redirect to correct dashboard
+    if (user.role === "consignor") return <Navigate to="/consignor/dashboard" replace />;
+    return <Navigate to="/bidder/dashboard" replace />;
   }
   return children;
 }
@@ -37,18 +33,17 @@ function GuestRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
   if (loading) return null;
   if (!user) return children;
-  return user.role === "consignor"
-    ? <Navigate to="/consignor/dashboard" replace />
-    : <Navigate to="/bidder/dashboard" replace />;
+  if (user.role === "consignor") return <Navigate to="/consignor/dashboard" replace />;
+  return <Navigate to="/bidder/dashboard" replace />;
 }
 
+// ── Smart root redirect ───────────────────────────────────────────────────────
 function RootRedirect() {
   const { user, loading } = useContext(AuthContext);
   if (loading) return null;
   if (!user) return <Navigate to="/auctions" replace />;
-  return user.role === "consignor"
-    ? <Navigate to="/consignor/dashboard" replace />
-    : <Navigate to="/bidder/dashboard" replace />;
+  if (user.role === "consignor") return <Navigate to="/consignor/dashboard" replace />;
+  return <Navigate to="/bidder/dashboard" replace />;
 }
 
 export default function App() {
@@ -60,7 +55,7 @@ export default function App() {
       <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
       <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
 
-      {/* Public */}
+      {/* Public auction browsing */}
       <Route path="/auctions" element={<AuctionsPage />} />
       <Route path="/auctions/:id" element={<AuctionDetailPage />} />
 
@@ -68,15 +63,11 @@ export default function App() {
       <Route path="/auctions/create" element={<ProtectedRoute allowedRoles={["consignor", "admin"]}><CreateAuctionPage /></ProtectedRoute>} />
       <Route path="/auctions/:id/edit" element={<ProtectedRoute allowedRoles={["consignor", "admin"]}><EditAuctionPage /></ProtectedRoute>} />
       <Route path="/consignor/dashboard" element={<ProtectedRoute allowedRoles={["consignor", "admin"]}><ConsignorDashboard /></ProtectedRoute>} />
-      <Route path="/consignor/listings" element={<ProtectedRoute allowedRoles={["consignor", "admin"]}><ConsignorDashboard /></ProtectedRoute>} />
-      <Route path="/consignor/payouts" element={<ProtectedRoute allowedRoles={["consignor", "admin"]}><ConsignorDashboard /></ProtectedRoute>} />
-      <Route path="/consignor/profile" element={<ProtectedRoute allowedRoles={["consignor", "admin"]}><ConsignorProfile /></ProtectedRoute>} />
 
       {/* Bidder only */}
       <Route path="/bidder/dashboard" element={<ProtectedRoute allowedRoles={["bidder"]}><BidderDashboard /></ProtectedRoute>} />
-      <Route path="/bidder/wins" element={<ProtectedRoute allowedRoles={["bidder"]}><BidderDashboard /></ProtectedRoute>} />
-      <Route path="/bidder/profile" element={<ProtectedRoute allowedRoles={["bidder"]}><BidderProfile /></ProtectedRoute>} />
 
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/auctions" replace />} />
     </Routes>
   );

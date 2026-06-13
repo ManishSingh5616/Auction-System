@@ -1,23 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const {
-  getAuctions,
-  getAuction,
-  createAuction,
-  updateAuction,
-  deleteAuction,
-  getMyAuctions,
-} = require("../controllers/auction.controller");
-const { protect } = require("../middleware/auth.middleware");
+const { getAuctions, getAuction, createAuction, updateAuction, deleteAuction, getMyAuctions } = require("../controllers/auction.controller");
+const { protect, restrictTo } = require("../middleware/auth.middleware");
 
-// Public routes
+// Public
 router.get("/", getAuctions);
 router.get("/:id", getAuction);
 
-// Protected routes (must be logged in)
-router.post("/", protect, createAuction);
-router.put("/:id", protect, updateAuction);
-router.delete("/:id", protect, deleteAuction);
-router.get("/user/my-auctions", protect, getMyAuctions);
+// Consignor only
+router.post("/", protect, restrictTo("consignor", "admin"), createAuction);
+router.put("/:id", protect, restrictTo("consignor", "admin"), updateAuction);
+router.delete("/:id", protect, restrictTo("consignor", "admin"), deleteAuction);
+router.get("/user/my-auctions", protect, restrictTo("consignor", "admin"), getMyAuctions);
 
 module.exports = router;

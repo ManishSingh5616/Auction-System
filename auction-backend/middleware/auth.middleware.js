@@ -1,66 +1,33 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User.model");
 
-/**
- * Protect middleware — verifies JWT from cookie or Authorization header.
- * Attaches req.user on success.
- */
 const protect = async (req, res, next) => {
-    let token;
+  try {
+    const token = req.cookies.token;
+    if (!token)
+      return res.status(401).json({ success: false, message: "Not authorized. No token provided." });
 
-    // 1. Check httpOnly cookie first
-    if (req.cookies?.token) {
-        token = req.cookies.token;
-    }
-    // 2. Fallback: Bearer token in Authorization header
-    else if (
-        req.headers.authorization &&
-        req.headers.authorization.startsWith("Bearer ")
-    ) {
-        token = req.headers.authorization.split(" ")[1];
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    if (!user)
+      return res.status(401).json({ success: false, message: "User not found." });
 
-    if (!token) {
-        return res.status(401).json({
-            success: false,
-            message: "Not authorized. No token provided.",
-        });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // Attach user to request (exclude password)
-        req.user = await User.findById(decoded.id).select("-password");
-
-        if (!req.user) {
-            return res.status(401).json({
-                success: false,
-                message: "User belonging to this token no longer exists.",
-            });
-        }
-
-        next();
-    } catch (error) {
-        return res.status(401).json({
-            success: false,
-            message: "Not authorized. Token invalid or expired.",
-        });
-    }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ success: false, message: "Token invalid or expired." });
+  }
 };
 
-/**
- * Restrict to certain roles, e.g. adminOnly = restrictTo('admin')
- */
-const restrictTo = (...roles) => {
-    return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({
-                success: false,
-                message: "You do not have permission to perform this action.",
-            });
-        }
-        next();
-    };
+// Only allow specific roles
+const restrictTo = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: `Access denied. Only ${roles.join(" or ")} can do this.`,
+    });
+  }
+  next();
 };
 
 module.exports = { protect, restrictTo };
