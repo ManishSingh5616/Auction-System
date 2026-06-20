@@ -7,8 +7,8 @@ const getAuctions = async (req, res) => {
     const query = {};
     if (status) {
       query.status = status;
-    } 
-    else{
+    }
+    else {
       query.status = "active";
       query.endTime = { $gt: new Date() }; // ← only truly live ones
     }
